@@ -33,7 +33,7 @@ public class RetryScheduler {
      * @param task task to be executed
      */
     public boolean doTask(Task task) {
-        log.info("[TaskRunner] executing task with id " + task.getTaskId());
+        log.info("[TaskRunner] doing task with id " + task.getTaskId());
         boolean result = Math.random() > 0.5;
         if (!result) enqueueTask(task);
 
