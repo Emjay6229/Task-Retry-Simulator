@@ -22,5 +22,13 @@ public class Task {
     public int getRetryCount() {
         return retryCount.get();
     }
+
+    @Override
+    public String toString() {
+        return "Task{" +
+                "taskId='" + taskId + '\'' +
+                ", retryCount=" + retryCount +
+                '}';
+    }
 }
 

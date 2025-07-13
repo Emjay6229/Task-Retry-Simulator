@@ -28,13 +28,16 @@ public class RetryScheduler {
     }
 
     /**
-     * simulates failure by simply adding a task to the retry queue
+     * simulates task execution that randomly passes or fails
      * logs success or failure
-     * @param taskId unique identifier for the task
+     * @param task task to be executed
      */
-    public void simulateFailure(String taskId) {
-       boolean submitted = failedTaskQueue.offer(new Task(taskId));
-       log.info(() -> String.format("Queued failed task [%s] successfully: %s", taskId, submitted));
+    public boolean doTask(Task task) {
+        log.info("[TaskRunner] executing task with id " + task.getTaskId());
+        boolean result = Math.random() > 0.5;
+        if (!result) enqueueTask(task);
+
+        return result;
     }
 
     /**
@@ -44,51 +47,59 @@ public class RetryScheduler {
         return () -> {
             Task task = failedTaskQueue.poll();
             if (Objects.nonNull(task)) {
+                log.info(String.format(
+                        "[TaskRunner] [Thread: %s] submitting task [%s] for retrying",
+                        Thread.currentThread().getName(),
+                        task.getTaskId()));
                 try {
-                    threadPool.submit(doTask(task));
+                    threadPool.submit(retryTask(task));
                 } catch (RejectedExecutionException e) {
                     log.warning("Retry task submission rejected for task: " + task.getTaskId());
                 }
+            } else {
+                log.info("There are no failed tasks");
             }
         };
     }
 
     /**
-     * Does a task and queues it for retry if it fails.
+     * Performs task retry
      * @param task task to be completed
      * @return runnable
      */
-    private Runnable doTask(Task task) {
+    private Runnable retryTask(Task task) {
         return () -> {
-            log.info(() -> String.format("[TaskRunner] [Thread: %s] Retrying task [%s]", Thread.currentThread().getName(), task.getTaskId()));
-            boolean success = executeTask(task.getTaskId());
-            int taskRetryCount = task.incrementRetryCount();
+            if (task.getRetryCount() >= 3) {
+                // ideally, a task that has exhausted the designated retry count should be added to a DLQ but that is not implemented yet.
+                log.info("Giving up on task " + task.getTaskId() + " after " + task.getRetryCount() + " attempts.");
+            }
 
-            if (!success) {
-                if (taskRetryCount < 3) {
-                    log.info(() -> String.format("[TaskQueue] Retry failed. Re-queuing task with id [%s], retry count: [%s]", task.getTaskId(), taskRetryCount));
-                    boolean submitted = failedTaskQueue.offer(task);
-                    if (!submitted) {
-                        log.warning(String.format("[TaskQueue] Re-queuing task with id [%s] failed: [%s]", task.getTaskId(), false));
-                        return;
-                    }
-                    log.info(() -> String.format("[TaskQueue] Task [%s] Re-queue status: [%s]", task.getTaskId(), true));
-                } else {
-                    // ideally, a task that has exhausted the designated retry count should be added to a DLQ but that is not implemented yet.
-                    log.info(() -> "Giving up on task " + task.getTaskId() + " after " + taskRetryCount + " attempts.");
-                }
-            } else {
-                log.info(String.format("::::[ Thread: %s ] Task with id [%s] is completed!::::",
-                        Thread.currentThread().getName(),
-                        task.getTaskId()));
+            log.info(String.format("::::[TaskRunner] [Thread: %s] about to retry task [%s]::::",
+                    Thread.currentThread().getName(), task.getTaskId()));
+            task.incrementRetryCount();
+            // task enqueues itself if it fails
+            boolean taskCompleted = doTask(task);
+
+            if (taskCompleted) {
+                log.info(String.format("::::[ Thread: %s ] Task with id [%s] is completed!::::", Thread.currentThread().getName(), task.getTaskId()));
             }
         };
     }
 
-    private boolean executeTask(String taskId) {
-        // Simulate random success or failure
-        log.info("[TaskRunner] executing task with id " + taskId);
-        return Math.random() > 0.5;
+    /**
+     * adding a task to the retry queue
+     * logs success or failure
+     * @param failedTask task to be queued
+     */
+    private void enqueueTask(Task failedTask) {
+        boolean submitted = failedTaskQueue.offer(failedTask);
+
+        if (!submitted) {
+            log.info(String.format("Queuing failed task [%s] was unsuccessful: %s", failedTask, false));
+            return;
+        }
+
+        log.info(String.format("Queued failed task [%s] successfully: %s", failedTask, true));
     }
 
     private void registerShutDownHook() {
