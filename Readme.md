@@ -42,7 +42,7 @@ Each task has a retry count and is either:
 3. A scheduled task polls this queue every 10 seconds.
 4. If a task is present, it's submitted to a thread pool for execution.
 5. If the task fails, it's retried up to 3 times.
-6. After 3 failed retries, the task is logged as permanently failed (can be extended to support DLQ).
+6. After 3 failed retries, the task is logged as permanently failed.
 
 ---
 

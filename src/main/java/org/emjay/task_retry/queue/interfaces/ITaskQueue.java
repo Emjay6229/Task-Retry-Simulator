@@ -1,10 +1,10 @@
-package org.emjay.task_retry.Queue;
+package org.emjay.task_retry.queue.interfaces;
 
 import org.emjay.task_retry.domain.Task;
 
 import java.util.concurrent.BlockingQueue;
 
-public interface TaskQueue<E> {
+public interface ITaskQueue<E> {
     BlockingQueue<E> getQueue();
 
     boolean enqueue(Task task);

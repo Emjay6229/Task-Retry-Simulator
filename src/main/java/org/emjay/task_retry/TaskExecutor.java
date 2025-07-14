@@ -1,9 +1,8 @@
 package org.emjay.task_retry;
 
-import org.emjay.task_retry.Queue.FailedTaskQueue;
+import org.emjay.task_retry.queue.FailedTaskQueue;
 import org.emjay.task_retry.domain.Task;
 
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 public class TaskExecutor {
