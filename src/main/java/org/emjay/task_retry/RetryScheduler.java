@@ -1,5 +1,7 @@
 package org.emjay.task_retry;
 
+import org.emjay.task_retry.Queue.FailedTaskQueue;
+import org.emjay.task_retry.Queue.TaskDeadLetterQueue;
 import org.emjay.task_retry.domain.Task;
 
 import java.util.Objects;
@@ -15,7 +17,9 @@ import java.util.logging.Logger;
 
 public class RetryScheduler {
     private static final Logger log = Logger.getLogger(String.valueOf(RetryScheduler.class));
-    private final BlockingQueue<Task> failedTaskQueue = new LinkedBlockingQueue<>();
+    private static final TaskExecutor taskExecutor = new TaskExecutor();
+    private final FailedTaskQueue taskQueue = new FailedTaskQueue();
+    private final TaskDeadLetterQueue deadLetterQueue = new TaskDeadLetterQueue();
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private final ExecutorService threadPool = Executors.newFixedThreadPool(2);
 
@@ -27,83 +31,82 @@ public class RetryScheduler {
         registerShutDownHook();
     }
 
-    /**
-     * simulates task execution that randomly passes or fails
-     * logs success or failure
-     * @param task task to be executed
-     */
-    public boolean doTask(Task task) {
-        log.info("[TaskRunner] doing task with id " + task.getTaskId());
-        boolean result = Math.random() > 0.5;
-        if (!result) enqueueTask(task);
-
-        return result;
+    public static String getDelayString(Task task) {
+        long delayInMillis = task.getNextRetryAt() - System.currentTimeMillis();
+        return delayInMillis < 0
+                ? String.format("%sms", Math.abs(delayInMillis))
+                : String.format("%ss", TimeUnit.MILLISECONDS.toSeconds(delayInMillis));
     }
+
 
     /**
      * @return a runnable that polls the failed task retry queue and submits a retry task to the thread pool if any exists
      */
     private Runnable submitTaskForRetry() {
         return () -> {
-            Task task = failedTaskQueue.poll();
+            Task task = taskQueue.dequeue();
+
             if (Objects.nonNull(task)) {
-                log.info(String.format(
-                        "[TaskRunner] [Thread: %s] submitting task [%s] for retrying",
-                        Thread.currentThread().getName(),
-                        task.getTaskId()));
-                try {
-                    threadPool.submit(retryTask(task));
-                } catch (RejectedExecutionException e) {
-                    log.warning("Retry task submission rejected for task: " + task.getTaskId());
+                long now = System.currentTimeMillis();
+
+                if (now >= task.getNextRetryAt()) {
+                    log.info(String.format("[TaskRunner] [Thread: %s] submitting task [%s] for retrying",
+                        Thread.currentThread().getName(), task.getTaskId()));
+                    try {
+                        threadPool.submit(retryTask(task));
+                    } catch (RejectedExecutionException e) {
+                        log.warning("Retry task submission rejected for task: " + task.getTaskId());
+                    }
+                } else {
+                    taskQueue.enqueue(task);
+                    log.info("Too early. Will retry in " + getDelayString(task));
                 }
             } else {
-                log.info("There are no failed tasks");
+                log.info("Task Queue is empty");
             }
         };
     }
 
     /**
-     * Performs task retry
+     * Performs task retry. Moves persistently failing tasks to a Dead letter Queue
      * @param task task to be completed
      * @return runnable
      */
     private Runnable retryTask(Task task) {
         return () -> {
             if (task.getRetryCount() >= 3) {
-                // ideally, a task that has exhausted the designated retry count should be added to a DLQ but that is not implemented yet.
-                log.info("Giving up on task " + task.getTaskId() + " after " + task.getRetryCount() + " attempts.");
+                moveToDLQ(task);
+                return;
             }
 
-            log.info(String.format("::::[TaskRunner] [Thread: %s] about to retry task [%s]::::",
+            log.info(String.format("::::[TaskRunner] [Thread: %s] Retrying task [%s].......::::",
                     Thread.currentThread().getName(), task.getTaskId()));
-            task.incrementRetryCount();
-            // task enqueues itself if it fails
-            boolean taskCompleted = doTask(task);
 
-            if (taskCompleted) {
-                log.info(String.format("::::[ Thread: %s ] Task with id [%s] is completed!::::", Thread.currentThread().getName(), task.getTaskId()));
-            }
+            task.incrementRetryCount();
+            taskExecutor.doTask(task);
         };
     }
 
     /**
-     * adding a task to the retry queue
-     * logs success or failure
-     * @param failedTask task to be queued
+     * moves persistently failing task to a dead letter queue
+     * @param task task to be completed
      */
-    private void enqueueTask(Task failedTask) {
-        boolean submitted = failedTaskQueue.offer(failedTask);
+    private void moveToDLQ(Task task) {
+        log.info(":::::Moving task to DLQ " + task.getTaskId() + " after " + task.getRetryCount() + " attempts.:::::");
+        boolean isSubmitted = deadLetterQueue.enqueue(task);
 
-        if (!submitted) {
-            log.info(String.format("Queuing failed task [%s] was unsuccessful: %s", failedTask, false));
-            return;
+        if (!isSubmitted) {
+            log.warning("Dead Letter Queue is full!");
         }
 
-        log.info(String.format("Queued failed task [%s] successfully: %s", failedTask, true));
+        log.info(String.format(":::Task [%s] has been placed in DLQ successfully", task.getTaskId()));
     }
 
+    /**
+     * Cleans up the threads after JVM is shut down
+     */
     private void registerShutDownHook() {
-        log.info("[Task Shutdown] Shutting down scheduler and thread pool");
+        log.info("[Task Shutdown] registering shutdown hook");
         Thread shutDownHook = new Thread(() -> {
             threadPool.shutdown();
             scheduler.shutdown();
