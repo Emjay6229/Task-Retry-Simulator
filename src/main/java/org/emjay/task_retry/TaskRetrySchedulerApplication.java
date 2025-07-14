@@ -9,10 +9,11 @@ public final class TaskRetrySchedulerApplication {
 
     public static void main(String[] args) {
         RetryScheduler retryScheduler = new RetryScheduler();
+        TaskExecutor taskExecutor = new TaskExecutor();
 
-        retryScheduler.doTask(new Task("task-101"));
-        retryScheduler.doTask(new Task("task-102"));
-        retryScheduler.doTask(new Task("task-103"));
+        taskExecutor.doTask(new Task("task-101"));
+        taskExecutor.doTask(new Task("task-102"));
+        taskExecutor.doTask(new Task("task-103"));
 
         retryScheduler.start();
     }

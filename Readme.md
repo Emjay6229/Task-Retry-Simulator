@@ -1,7 +1,7 @@
 # RetryScheduler (Java)
 
-A simple task retry scheduler built using **Java concurrency primitives**.  
-This project simulates a retry mechanism that retries failed tasks using a thread-safe queue and a scheduled retry loop.
+A simple task retry scheduler to demonstrate the first principles of a robust retry system. Built using **Java concurrency primitives**.  
+This project simulates a retry mechanism that retries failed tasks using a thread-safe queue and a scheduled retry loop (in a production-grade retry system, a persistent retry queue is preferred to an in-memory queue).
 
 ## 🚀 Project Overview
 
@@ -11,7 +11,8 @@ This project demonstrates how to implement a **retry system** in core Java using
 - `ScheduledExecutorService` to periodically poll the queue
 - `ExecutorService` to retry tasks using worker threads
 - A **shutdown hook** to gracefully terminate the system
-- **Retry logic** that gives up after 3 failed attempts
+- **Retry logic** that adds persistently failing tasks to a Dead letter Queue after 3 failed attempts.
+- **Exponential Backoff** to avoid overloading the retry system
 
 Each task has a retry count and is either:
 - Re-queued on failure (up to 3 times)
@@ -36,7 +37,7 @@ Each task has a retry count and is either:
 
 ## ⚙️ How It Works
 
-1. Tasks are simulated via `simulateFailure("taskId")`.
+1. Tasks are simulated via `doTask(task)`.
 2. These are placed into a `LinkedBlockingQueue`.
 3. A scheduled task polls this queue every 10 seconds.
 4. If a task is present, it's submitted to a thread pool for execution.
