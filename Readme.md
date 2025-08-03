@@ -10,7 +10,7 @@ This project demonstrates how to implement a **retry system** in core Java using
 - `BlockingQueue` to buffer failed tasks
 - `ScheduledExecutorService` to periodically poll the queue
 - `ExecutorService` to retry tasks using worker threads
-- A **shutdown hook** to gracefully terminate the system
+- A **shutdown hook** to gracefully terminate the threads
 - **Retry logic** that adds persistently failing tasks to a Dead letter Queue after 3 failed attempts.
 - **Exponential Backoff** to avoid overloading the retry system
 
