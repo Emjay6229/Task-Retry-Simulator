@@ -16,7 +16,7 @@ This project demonstrates how to implement a **retry system** in core Java using
 
 Each task has a retry count and is either:
 - Re-queued on failure (up to 3 times)
-- Dropped or redirected to a Dead Letter Queue (DLQ) after max retries (currently just logged)
+- Redirected to a Dead Letter Queue (DLQ) after max retries
 
 ---
 
