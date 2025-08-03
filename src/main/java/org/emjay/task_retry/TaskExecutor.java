@@ -19,9 +19,10 @@ public class TaskExecutor {
         if (!result) {
             enqueueTask(task);
         }
-        else
+        else {
             log.info(String.format("::::[ Thread: %s ] Task with id [%s] is completed after [#%s] retries!::::",
-                    Thread.currentThread().getName(), task.getTaskId(), task.getRetryCount()));
+                Thread.currentThread().getName(), task.getTaskId(), task.getRetryCount()));
+        }
     }
 
     /**
