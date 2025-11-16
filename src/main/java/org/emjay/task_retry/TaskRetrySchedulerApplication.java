@@ -8,13 +8,13 @@ public final class TaskRetrySchedulerApplication {
     }
 
     public static void main(String[] args) {
-        RetryScheduler retryScheduler = new RetryScheduler();
+        RetryWorker retryWorker = new RetryWorker();
         TaskExecutor taskExecutor = new TaskExecutor();
 
         taskExecutor.doTask(new Task("task-101"));
         taskExecutor.doTask(new Task("task-102"));
         taskExecutor.doTask(new Task("task-103"));
 
-        retryScheduler.start();
+        retryWorker.start();
     }
 }
