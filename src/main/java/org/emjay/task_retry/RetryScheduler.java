@@ -15,7 +15,7 @@ import java.util.logging.Logger;
  * Uses a thread pool of 3 threads. Failed tasks are submitted to any idle thread in the thread pool
  */
 
-public class RetryScheduler {
+public class RetryWorker {
     private static final Logger log = Logger.getLogger(String.valueOf(RetryScheduler.class));
     private static final TaskExecutor taskExecutor = new TaskExecutor();
     private final FailedTaskQueue taskQueue = new FailedTaskQueue();
