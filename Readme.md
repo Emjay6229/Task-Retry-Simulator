@@ -1,16 +1,16 @@
 # RetryScheduler (Java)
 
 A simple task retry scheduler to demonstrate the first principles of a robust retry system. Built using **Java concurrency primitives**.  
-This project simulates a retry mechanism that retries failed tasks using a thread-safe queue and a scheduled retry loop (in a production-grade retry system, a persistent retry queue is preferred to an in-memory queue).
+This project simulates a retry mechanism that retries failed tasks using thread-safe queues and a scheduled retry loop (in a production-grade retry system, a persistent retry queue is preferred to an in-memory queue).
 
 ## 🚀 Project Overview
 
-This project demonstrates how to implement a **retry system** in core Java using:
+This project demonstrates the first principles of implementing a **retry system** in core Java using:
 
 - `BlockingQueue` to buffer failed tasks
-- `ScheduledExecutorService` to periodically poll the queue
+- `ScheduledExecutorService` a dedicated thread to periodically poll the queue
 - `ExecutorService` to retry tasks using worker threads
-- A **shutdown hook** to gracefully terminate the threads
+- A **shutdown hook**: a dedicated thread that gracefully terminates the threads
 - **Retry logic** that adds persistently failing tasks to a Dead letter Queue after 3 failed attempts.
 - **Exponential Backoff** to avoid overloading the retry system
 
@@ -63,7 +63,7 @@ mvn clean install
 You can run the main class using maven (if you have maven installed):
 
 ```bash
-mvn exec:java -Dexec.mainClass="org.emjay.task_retry.TaskRetrySchedulerApplication"
+mvn exec:java -Dexec.mainClass="org.emjay.task_retry.RetryApplication"
 ```
 
 Or run using your IDE run configuration

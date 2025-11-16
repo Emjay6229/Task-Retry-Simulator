@@ -16,8 +16,8 @@ import java.util.logging.Logger;
  */
 
 public class RetryWorker {
-    private static final Logger log = Logger.getLogger(String.valueOf(RetryScheduler.class));
-    private static final TaskExecutor taskExecutor = new TaskExecutor();
+    private static final Logger log = Logger.getLogger(String.valueOf(RetryWorker.class));
+    private static final TaskRunner taskRunner = new TaskRunner();
     private final FailedTaskQueue taskQueue = new FailedTaskQueue();
     private final TaskDeadLetterQueue deadLetterQueue = new TaskDeadLetterQueue();
     private final ScheduledExecutorService worker = Executors.newSingleThreadScheduledExecutor();
@@ -82,7 +82,7 @@ public class RetryWorker {
                     Thread.currentThread().getName(), task.getTaskId()));
 
             task.incrementRetryCount();
-            taskExecutor.doTask(task);
+            taskRunner.doTask(task);
         };
     }
 
@@ -106,24 +106,23 @@ public class RetryWorker {
      */
     private void registerShutDownHook() {
         log.info("[Task Shutdown] registering shutdown hook");
-        Thread shutDownHook = new Thread(() -> {
+        Runnable shutDown = () -> {
             threadPool.shutdown();
-            scheduler.shutdown();
+            worker.shutdown();
 
             try {
                 if (!threadPool.awaitTermination(5, TimeUnit.SECONDS)) {
                     threadPool.shutdownNow();
                 }
 
-                if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
-                    scheduler.shutdownNow();
+                if (!worker.awaitTermination(5, TimeUnit.SECONDS)) {
+                    worker.shutdownNow();
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
-        });
-
-        Runtime.getRuntime().addShutdownHook(shutDownHook);
+        };
+        Runtime.getRuntime().addShutdownHook(new Thread(shutDown));
     }
 }
 

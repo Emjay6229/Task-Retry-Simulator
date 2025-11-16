@@ -5,13 +5,13 @@ import org.emjay.task_retry.domain.Task;
 
 import java.util.logging.Logger;
 
-public class TaskExecutor {
-    private static final Logger log = Logger.getLogger(String.valueOf(TaskExecutor.class));
+public class TaskRunner {
+    private static final Logger log = Logger.getLogger(String.valueOf(TaskRunner.class));
 
     /**
-     * simulates task execution that randomly passes or fails
-     * logs success or failure
+     * simulates task execution that randomly passes or fails. If tasks fails, it is added to the retry queue
      * @param task task to be executed
+     * returns void (logs success or failure)
      */
     public void doTask(Task task) {
         log.info("[TaskRunner] Executing task with id " + task.getTaskId());
@@ -39,6 +39,6 @@ public class TaskExecutor {
         }
 
         log.info(String.format("Queued failed task [%s] successfully. Will retry in [%s]",
-                failedTask.getTaskId(), RetryScheduler.getDelayString(failedTask)));
+                failedTask.getTaskId(), RetryWorker.getDelayString(failedTask)));
     }
 }
