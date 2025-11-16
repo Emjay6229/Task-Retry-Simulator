@@ -11,7 +11,7 @@ import java.util.logging.Logger;
 /**
  * This is simulated retry process using java constructs
  * A blocking queue to hold failed task. So that when a task fails, it is added to the Queue
- * A RetryScheduler that uses the ScheduledExecutorService to poll the Failed Task Queue and retry it.
+ * A Retry Worker that uses the ScheduledExecutorService to poll the Failed Task Queue and retry it.
  * Uses a thread pool of 3 threads. Failed tasks are submitted to any idle thread in the thread pool
  */
 
@@ -20,14 +20,14 @@ public class RetryWorker {
     private static final TaskExecutor taskExecutor = new TaskExecutor();
     private final FailedTaskQueue taskQueue = new FailedTaskQueue();
     private final TaskDeadLetterQueue deadLetterQueue = new TaskDeadLetterQueue();
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    private final ScheduledExecutorService worker = Executors.newSingleThreadScheduledExecutor();
     private final ExecutorService threadPool = Executors.newFixedThreadPool(2);
 
     /**
      * Retries failed task every 10 seconds
      */
     public void start() {
-        scheduler.scheduleAtFixedRate(submitTaskForRetry(), 5, 10, TimeUnit.SECONDS);
+        worker.scheduleAtFixedRate(submitTaskForRetry(), 5, 10, TimeUnit.SECONDS);
         registerShutDownHook();
     }
 
@@ -37,7 +37,6 @@ public class RetryWorker {
                 ? String.format("%sms", Math.abs(delayInMillis))
                 : String.format("%ss", TimeUnit.MILLISECONDS.toSeconds(delayInMillis));
     }
-
 
     /**
      * @return a runnable that polls the failed task retry queue and submits a retry task to the thread pool if any exists
