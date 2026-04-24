@@ -1,7 +1,7 @@
 package org.emjay.task_retry;
 
-import org.emjay.task_retry.queue.FailedTaskQueue;
-import org.emjay.task_retry.queue.TaskDeadLetterQueue;
+import org.emjay.task_retry.queue.RetryQueue;
+import org.emjay.task_retry.queue.DeadLetterQueue;
 import org.emjay.task_retry.domain.Task;
 
 import java.util.Objects;
@@ -10,18 +10,18 @@ import java.util.logging.Logger;
 
 /**
  * This is simulated retry process using java constructs
- * A blocking queue to hold failed task. So that when a task fails, it is added to the Queue
- * A Retry Worker that uses the ScheduledExecutorService to poll the Failed Task Queue and retry it.
- * Uses a thread pool of 3 threads. Failed tasks are submitted to any idle thread in the thread pool
+ * A blocking queue to hold failed task. So that when a task fails, it is added to the Retry Queue
+ * A Retry Worker uses the ScheduledExecutorService to poll the Retry Queue and retry tasks in it.
+ * Uses a thread pool of n threads. Failed tasks are submitted to any idle thread in the thread pool
  */
 
 public class RetryWorker {
     private static final Logger log = Logger.getLogger(String.valueOf(RetryWorker.class));
     private static final TaskRunner taskRunner = new TaskRunner();
-    private final FailedTaskQueue taskQueue = new FailedTaskQueue();
-    private final TaskDeadLetterQueue deadLetterQueue = new TaskDeadLetterQueue();
-    private final ScheduledExecutorService worker = Executors.newSingleThreadScheduledExecutor();
-    private final ExecutorService threadPool = Executors.newFixedThreadPool(2);
+    private static final RetryQueue taskQueue = (RetryQueue) RetryQueue.getInstance();
+    private static final DeadLetterQueue deadLetterQueue = (DeadLetterQueue) DeadLetterQueue.getInstance();
+    private static final ScheduledExecutorService worker = Executors.newSingleThreadScheduledExecutor();
+    private static final ExecutorService threadPool = Executors.newFixedThreadPool(2);
 
     /**
      * Retries failed task every 10 seconds

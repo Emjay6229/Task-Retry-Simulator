@@ -1,6 +1,6 @@
 package org.emjay.task_retry;
 
-import org.emjay.task_retry.queue.FailedTaskQueue;
+import org.emjay.task_retry.queue.RetryQueue;
 import org.emjay.task_retry.domain.Task;
 
 import java.util.logging.Logger;
@@ -17,7 +17,7 @@ public class TaskRunner {
         log.info("[TaskRunner] Executing task with id " + task.getTaskId());
         boolean result = Math.random() > 0.5;
         if (!result) {
-            enqueueTask(task);
+            addToRetryQueue(task);
         }
         else {
             log.info(String.format("::::[ Thread: %s ] Task with id [%s] is completed after [#%s] retries!::::",
@@ -30,8 +30,8 @@ public class TaskRunner {
      * logs success or failure
      * @param failedTask task to be queued
      */
-    private void enqueueTask(Task failedTask) {
-        boolean submitted = new FailedTaskQueue().enqueue(failedTask);
+    private void addToRetryQueue(Task failedTask) {
+        boolean submitted = RetryQueue.getInstance().enqueue(failedTask);
 
         if (!submitted) {
             log.warning("Retry queue is full! Dropping task: " + failedTask.getTaskId());
